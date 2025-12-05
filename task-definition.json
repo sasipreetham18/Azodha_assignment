@@ -1,37 +1,37 @@
-
 {
-  "family": "azodha-devops-task",
+  "family": "azodha-devops-assignment-task",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
-  "cpu": "512",
-  "memory": "1024",
+  "cpu": "256",
+  "memory": "512",
   "executionRoleArn": "arn:aws:iam::804686432215:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::804686432215:role/ecsTaskRole",
-  "containerDefinitions": [{
-    "name": "azodha-service",
-    "image": "804686432215.dkr.ecr.ap-south-1.amazonaws.com/azodha-devops-assignment:latest",
-    "portMappings": [{"containerPort": 8080,"protocol":"tcp"}],
-    "essential": true,
-    "environment": [
-      {"name":"ENV","value":"prod"}
-    ],
-    "secrets": [
-      {"name":"DB_PASSWORD","valueFrom":"arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:mydbpass"}
-    ],
-    "logConfiguration": {
-      "logDriver": "awslogs",
-      "options": {
-        "awslogs-group": "/ecs/azodha",
-        "awslogs-region": "REGION",
-        "awslogs-stream-prefix": "azodha"
+  "taskRoleArn": "arn:aws:iam::804686432215:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "azodha-api",
+      "image": "804686432215.dkr.ecr.ap-south-1.amazonaws.com/azodha-devops-assignment:latest",
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 10
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/azodha-devops-assignment",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "ecs"
+        }
       }
-    },
-    "healthCheck": {
-      "command": ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"],
-      "interval": 30,
-      "timeout": 5,
-      "retries": 3,
-      "startPeriod": 60
     }
-  }]
+  ]
 }
