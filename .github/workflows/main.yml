@@ -25,36 +25,26 @@ jobs:
     - name: Run tests
       run: echo "No tests added yet"
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Build Docker image
-      run: docker build -t ${{ secrets.DOCKER_USERNAME }}/azodha-devops-assignment:latest .
-
-    - name: Push Docker image
-      run: docker push ${{ secrets.DOCKER_USERNAME }}/azodha-devops-assignment:latest 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v2
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+        aws-region: ap-south-1
 
-    - name: Login to ECR
+    - name: Login to Amazon ECR
       id: ecr-login
       uses: aws-actions/amazon-ecr-login@v1
 
-    - name: Build and tag image for ECR
+    - name: Build and tag Docker image
       run: |
-        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-        REGION=${{ secrets.AWS_REGION }}
+        ACCOUNT_ID=804686432215
+        REGION=ap-south-1
         REPO_NAME=azodha-devops-assignment
         IMAGE_URI="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${REPO_NAME}:latest"
         docker build -t $IMAGE_URI .
         echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
-    - name: Push image to ECR
-      run: docker push $IMAGE_URI
+    - name: Push Docker image to ECR
+      run: |
+        docker push $IMAGE_URI
