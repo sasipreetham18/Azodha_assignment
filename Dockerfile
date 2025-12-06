@@ -1,4 +1,4 @@
-# ====== BUILD STAGE ======
+
 FROM python:3.11-slim AS builder
 
 WORKDIR /app
@@ -27,7 +27,7 @@ ENV PYTHONUNBUFFERED=1
 
 USER appuser
 
-EXPOSE 8000
+EXPOSE 5000
 
 # Healthcheck calling /health endpoint
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD python -c "import requests; import sys; \
@@ -35,4 +35,3 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD python -c "import reques
     sys.exit(0 if resp.status_code == 200 else 1)" || exit 1
 
 CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8000", "app.main:app"]
-
