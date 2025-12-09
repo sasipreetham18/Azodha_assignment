@@ -14,6 +14,10 @@ spec:
       labels:
         app: azodha-demo-api
     spec:
+      tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+          effect: "NoSchedule"
       containers:
         - name: azodha-demo-api
           image: sasipreetham18/azodha-devops-assignment:latest
@@ -47,10 +51,10 @@ kind: Service
 metadata:
   name: azodha-demo-api-svc
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: azodha-demo-api
   ports:
     - port: 80
       targetPort: 8000
-
+      nodePort: 30081
