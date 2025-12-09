@@ -100,7 +100,7 @@ Non-root Docker user
 
 EKS IAM access entries configured correctly
 
-# 8. Screenshots Evidence (Your Uploaded Images)
+# 8. Screenshots Evidence 
 
 Include these in your PDF:
 
