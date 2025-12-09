@@ -49,20 +49,51 @@ jobs:
         docker push $IMAGE_URI
         docker push "${{ secrets.ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.REPO_NAME }}:latest"
 
-    - name: Deploy to ECS
-      run: |
-        aws ecs update-service \
-          --cluster ${{ secrets.ECS_CLUSTER }} \
-          --service ${{ secrets.ECS_SERVICE }} \
-          --force-new-deployment \
-          --region ${{ secrets.AWS_REGION }}
+  - name: Install kubectl
+      uses: azure/setup-kubectl@v4
+      with:
+        version: '1.27.6'   # choose required kubectl version or omit for latest
 
-    - name: Wait for ECS service to be stable
+    - name: Update kubeconfig
       run: |
-        aws ecs wait services-stable \
-          --cluster ${{ secrets.ECS_CLUSTER }} \
-          --services ${{ secrets.ECS_SERVICE }} \
-          --region ${{ secrets.AWS_REGION }}
+        aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ secrets.AWS_REGION }}"
+
+    - name: Create namespace (if needed)
+      run: |
+        kubectl apply -f k8s/namespace.yaml || true
+
+    - name: Apply cluster resources (ConfigMaps, RBAC, ingress classes if any)
+      if: ${{ always() }}
+      run: |
+        # apply any base k8s manifests (service, configmaps). Keep idempotent.
+        kubectl apply -f k8s/service.yaml
+        kubectl apply -f k8s/pdb.yaml
+
+    - name: Ensure deployment manifest exists
+      run: |
+        if [ ! -f k8s/deployment.yaml ]; then
+          echo "k8s/deployment.yaml not found. Please add it to repo at k8s/deployment.yaml"
+          exit 1
+        fi
+
+    - name: Update image in deployment and rollout
+      env:
+        IMAGE_URI: ${{ env.IMAGE_URI }}
+      run: |
+        # set image on the deployment (deployment name must match manifest)
+        kubectl -n ${{ env.K8S_NAMESPACE }} set image deployment/${{ env.APP_NAME }} ${ { env.APP_NAME } }-container=$IMAGE_URI --record || \
+        kubectl -n ${{ env.K8S_NAMESPACE }} set image deployment/${{ env.APP_NAME }} ${ { env.APP_NAME } }=$IMAGE_URI --record || true
+
+        # fallback: patch the deployment with new image (safe)
+        kubectl -n ${{ env.K8S_NAMESPACE }} patch deployment ${{ env.APP_NAME }} -p \
+          "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${{ env.APP_NAME }}-container\",\"image\":\"$IMAGE_URI\"}]}}}}" || true
+
+        # wait for rollout to complete
+        kubectl -n ${{ env.K8S_NAMESPACE }} rollout status deployment/${{ env.APP_NAME }} --timeout=3m
+
+    - name: Verify pods
+      run: |
+        kubectl -n ${{ env.K8S_NAMESPACE }} get pods -l app=${{ env.APP_NAME }} -o wide
 
     - name: Deployment complete
-      run: echo "ECS service updated and stable!"
+      run: echo "EKS Deployment updated and rollout finished!"
